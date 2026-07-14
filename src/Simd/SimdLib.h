@@ -784,6 +784,20 @@ typedef enum
     SimdYuvTrect871, /*!< T-REC-T.871 full range conversion: Kr=0.299, Kb=0.114. */
 } SimdYuvType;
 
+typedef enum
+{
+    SimdYuyv422 = 0, /*!< Packed YUYV422 format; every four bytes store two pixels as Y0, U0, Y1, V0. */
+    SimdYvyu422,
+    SimdUyvy422,
+    SimdVyuy422,
+} SimdYuv422PackPatternType;
+
+typedef enum
+{
+    SimdBgr = 0, /*!< BGR channel order. */
+    SimdRgb, /*!< RGB channel order. */
+} SimdRgbOrderType;
+
 /*! @ingroup synet_types
     Describes convolution and deconvolution geometry, tensor types and activation.
 
