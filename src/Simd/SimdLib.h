@@ -2563,6 +2563,29 @@ extern "C"
 
     /*! @ingroup bgr_conversion
 
+        \fn void SimdBgrToYuv422Packed(const uint8_t * bgr, size_t bgrStride, size_t width, size_t height, uint8_t * yuv, size_t yuvStride, SimdRgbOrderType rgbOrder, SimdYuvType yuvType, SimdYuv422PackPatternType yuvPattern);
+
+        \short Converts a 24-bit BGR (or RGB) image to a packed YUV422 image (YUYV/YVYU/UYVY/VYUY).
+
+        The input BGR and output packed YUV422 images must have the same width and height.
+        The output stores two horizontal pixels in four bytes; its row contains width*2 bytes.
+        Image width must be even and not less than 2.
+        Y is computed for every source pixel. U and V are computed per each pair of neighboring horizontal pixels from averaged B, G and R values.
+
+        \param [in] bgr - a pointer to pixels data of input 24-bit BGR (or RGB) image.
+        \param [in] bgrStride - a row size of the BGR image.
+        \param [in] width - an image width.
+        \param [in] height - an image height.
+        \param [out] yuv - a pointer to pixels data of output packed YUV422 image.
+        \param [in] yuvStride - a row size of the yuv image.
+        \param [in] rgbOrder - an order of the input image color channels (see description of ::SimdRgbOrderType).
+        \param [in] yuvType - a type of output YUV image (see description of ::SimdYuvType).
+        \param [in] yuvPattern - a packing pattern of the output YUV422 image (see description of ::SimdYuv422PackPatternType).
+    */
+    SIMD_API void SimdBgrToYuv422Packed(const uint8_t* bgr, size_t bgrStride, size_t width, size_t height, uint8_t* yuv, size_t yuvStride, SimdRgbOrderType rgbOrder, SimdYuvType yuvType, SimdYuv422PackPatternType yuvPattern);
+
+    /*! @ingroup bgr_conversion
+
         \fn void SimdBgrToYuv444pV2(const uint8_t * bgr, size_t bgrStride, size_t width, size_t height, uint8_t * y, size_t yStride, uint8_t * u, size_t uStride, uint8_t * v, size_t vStride, SimdYuvType yuvType);
 
         \short Converts a 24-bit BGR image to planar YUV444P.
