@@ -375,7 +375,7 @@ namespace Simd
             SimdRgbOrderType rgbOrder, SimdYuvType yuvType, SimdYuv422PackPatternType yuvPattern)
         {
 #if defined(SIMD_X86_ENABLE) && defined(NDEBUG) && defined(_MSC_VER) && _MSC_VER <= 1900
-            assert(0);
+            Base::BgrToYuv422Packed(bgr, bgrStride, width, height, yuv, yuvStride, rgbOrder, yuvType, yuvPattern);
 #else
             switch (yuvType)
             {
