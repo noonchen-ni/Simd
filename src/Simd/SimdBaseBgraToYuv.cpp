@@ -216,5 +216,69 @@ namespace Simd
                 assert(0);
             }
         }
+
+        //-------------------------------------------------------------------------------------------------
+
+        template <class YuvType> SIMD_INLINE void BgraToYuv422Packed(const uint8_t* bgra, uint8_t* yuv, SimdRgbOrderType rgbOrder, SimdYuv422PackPatternType yuvPattern)
+        {
+            int b0, g0, r0, b1, g1, r1;
+            if (rgbOrder == SimdBgr)
+            {
+                b0 = bgra[0], g0 = bgra[1], r0 = bgra[2];
+                b1 = bgra[4], g1 = bgra[5], r1 = bgra[6];
+            }
+            else
+            {
+                r0 = bgra[0], g0 = bgra[1], b0 = bgra[2];
+                r1 = bgra[4], g1 = bgra[5], b1 = bgra[6];
+            }
+
+            int y0 = BgrToY<YuvType>(b0, g0, r0);
+            int y1 = BgrToY<YuvType>(b1, g1, r1);
+
+            int blue = Average(b0, b1);
+            int green = Average(g0, g1);
+            int red = Average(r0, r1);
+            int u = BgrToU<YuvType>(blue, green, red);
+            int v = BgrToV<YuvType>(blue, green, red);
+
+            switch (yuvPattern)
+            {
+            case SimdYuyv422: yuv[0] = y0; yuv[1] = u;  yuv[2] = y1; yuv[3] = v;  break;
+            case SimdYvyu422: yuv[0] = y0; yuv[1] = v;  yuv[2] = y1; yuv[3] = u;  break;
+            case SimdUyvy422: yuv[0] = u;  yuv[1] = y0; yuv[2] = v;  yuv[3] = y1; break;
+            case SimdVyuy422: yuv[0] = v;  yuv[1] = y0; yuv[2] = u;  yuv[3] = y1; break;
+            default:
+                assert(0);
+            }
+        }
+
+        template <class YuvType> void BgraToYuv422Packed(const uint8_t* bgra, size_t bgraStride, size_t width, size_t height,
+            uint8_t* yuv, size_t yuvStride, SimdRgbOrderType rgbOrder, SimdYuv422PackPatternType yuvPattern)
+        {
+            assert((width % 2 == 0) && (width >= 2));
+
+            for (size_t row = 0; row < height; row += 1)
+            {
+                for (size_t colBgra = 0, colYuv = 0; colBgra < width * 4; colBgra += 8, colYuv += 4)
+                    BgraToYuv422Packed<YuvType>(bgra + colBgra, yuv + colYuv, rgbOrder, yuvPattern);
+                yuv += yuvStride;
+                bgra += bgraStride;
+            }
+        }
+
+        void BgraToYuv422Packed(const uint8_t* bgra, size_t bgraStride, size_t width, size_t height, uint8_t* yuv, size_t yuvStride,
+            SimdRgbOrderType rgbOrder, SimdYuvType yuvType, SimdYuv422PackPatternType yuvPattern)
+        {
+            switch (yuvType)
+            {
+            case SimdYuvBt601: BgraToYuv422Packed<Bt601>(bgra, bgraStride, width, height, yuv, yuvStride, rgbOrder, yuvPattern); break;
+            case SimdYuvBt709: BgraToYuv422Packed<Bt709>(bgra, bgraStride, width, height, yuv, yuvStride, rgbOrder, yuvPattern); break;
+            case SimdYuvBt2020: BgraToYuv422Packed<Bt2020>(bgra, bgraStride, width, height, yuv, yuvStride, rgbOrder, yuvPattern); break;
+            case SimdYuvTrect871: BgraToYuv422Packed<Trect871>(bgra, bgraStride, width, height, yuv, yuvStride, rgbOrder, yuvPattern); break;
+            default:
+                assert(0);
+            }
+        }
     }
 }

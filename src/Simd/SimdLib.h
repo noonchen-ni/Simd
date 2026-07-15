@@ -2272,6 +2272,29 @@ extern "C"
 
     /*! @ingroup bgra_conversion
 
+        \fn void SimdBgraToYuv422Packed(const uint8_t * bgra, size_t bgraStride, size_t width, size_t height, uint8_t * yuv, size_t yuvStride, SimdRgbOrderType rgbOrder, SimdYuvType yuvType, SimdYuv422PackPatternType yuvPattern);
+
+        \short Converts a 32-bit BGRA (or RGBA) image to a packed YUV422 image (YUYV/YVYU/UYVY/VYUY) and ignores input alpha.
+
+        The input BGRA and output packed YUV422 images must have the same width and height.
+        The output stores two horizontal pixels in four bytes; its row contains width*2 bytes.
+        Image width must be even and not less than 2.
+        Y is computed for every source pixel. U and V are computed per each pair of neighboring horizontal pixels from averaged B, G and R values.
+
+        \param [in] bgra - a pointer to pixels data of input 32-bit BGRA (or RGBA) image.
+        \param [in] bgraStride - a row size of the BGRA image.
+        \param [in] width - an image width.
+        \param [in] height - an image height.
+        \param [out] yuv - a pointer to pixels data of output packed YUV422 image.
+        \param [in] yuvStride - a row size of the yuv image.
+        \param [in] rgbOrder - an order of the input image color channels (see description of ::SimdRgbOrderType).
+        \param [in] yuvType - a type of output YUV image (see description of ::SimdYuvType).
+        \param [in] yuvPattern - a packing pattern of the output YUV422 image (see description of ::SimdYuv422PackPatternType).
+    */
+    SIMD_API void SimdBgraToYuv422Packed(const uint8_t* bgra, size_t bgraStride, size_t width, size_t height, uint8_t* yuv, size_t yuvStride, SimdRgbOrderType rgbOrder, SimdYuvType yuvType, SimdYuv422PackPatternType yuvPattern);
+
+    /*! @ingroup bgra_conversion
+
         \fn void SimdBgraToYuv444pV2(const uint8_t* bgra, size_t bgraStride, size_t width, size_t height, uint8_t* y, size_t yStride, uint8_t* u, size_t uStride, uint8_t* v, size_t vStride, SimdYuvType yuvType);
 
         \short Converts a 32-bit BGRA image to planar YUV444P (4:4:4) and ignores input alpha.

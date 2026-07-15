@@ -1807,6 +1807,18 @@ SIMD_API void SimdBgrToYuv422Packed(const uint8_t* bgr, size_t bgrStride, size_t
         Base::BgrToYuv422Packed(bgr, bgrStride, width, height, yuv, yuvStride, rgbOrder, yuvType, yuvPattern);
 }
 
+SIMD_API void SimdBgraToYuv422Packed(const uint8_t* bgra, size_t bgraStride, size_t width, size_t height, uint8_t* yuv, size_t yuvStride,
+    SimdRgbOrderType rgbOrder, SimdYuvType yuvType, SimdYuv422PackPatternType yuvPattern)
+{
+    SIMD_EMPTY();
+#ifdef SIMD_AVX2_ENABLE
+    if (Avx2::Enable && width >= Avx2::DA)
+        Avx2::BgraToYuv422Packed(bgra, bgraStride, width, height, yuv, yuvStride, rgbOrder, yuvType, yuvPattern);
+    else
+#endif
+        Base::BgraToYuv422Packed(bgra, bgraStride, width, height, yuv, yuvStride, rgbOrder, yuvType, yuvPattern);
+}
+
 SIMD_API void SimdBinarization(const uint8_t * src, size_t srcStride, size_t width, size_t height,
                   uint8_t value, uint8_t positive, uint8_t negative, uint8_t * dst, size_t dstStride, SimdCompareType compareType)
 {
