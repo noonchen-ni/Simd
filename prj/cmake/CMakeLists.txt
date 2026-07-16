@@ -43,6 +43,7 @@ if(SIMD_SHARED)
     set(SIMD_LIB_TYPE "SHARED")
 else()
     set(SIMD_LIB_TYPE "STATIC")
+    add_definitions(-DSIMD_STATIC)
 endif()
 
 if(NOT SIMD_TOOLCHAIN STREQUAL "")

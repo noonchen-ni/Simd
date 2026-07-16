@@ -23,6 +23,7 @@
 */
 #include "Simd/SimdMemory.h"
 #include "Simd/SimdStore.h"
+#include "Simd/SimdUnpack.h"
 #include "Simd/SimdConversion.h"
 #include "Simd/SimdYuvToBgr.h"
 #include "Simd/SimdBase.h"
@@ -246,6 +247,142 @@ namespace Simd
             case SimdYuvBt709: BgrToYuv444pV2<Base::Bt709>(bgr, bgrStride, width, height, y, yStride, u, uStride, v, vStride); break;
             case SimdYuvBt2020: BgrToYuv444pV2<Base::Bt2020>(bgr, bgrStride, width, height, y, yStride, u, uStride, v, vStride); break;
             case SimdYuvTrect871: BgrToYuv444pV2<Base::Trect871>(bgr, bgrStride, width, height, y, yStride, u, uStride, v, vStride); break;
+            default:
+                assert(0);
+            }
+#endif
+        }
+
+        //-------------------------------------------------------------------------------------------------
+
+        template <bool align, class T> SIMD_INLINE void BgrToYuv422Packed(const uint8_t* bgr, uint8_t* yuv, SimdRgbOrderType rgbOrder, SimdYuv422PackPatternType yuvPattern)
+        {
+            static const __m256i K32_PERMUTE_UV = SIMD_MM256_SETR_EPI32(0x0, 0x2, 0x4, 0x6, 0x1, 0x3, 0x5, 0x7);
+
+            // input 64 BGR pixels (BGR is 3 bytes/pixel and rarely 32-byte aligned, so always load unaligned)
+            __m256i blue[2], green[2], red[2];
+
+            switch (rgbOrder)
+            {
+            case SimdBgr:
+                LoadBgr<false>((__m256i*)bgr + 0, blue[0], green[0], red[0]);
+                LoadBgr<false>((__m256i*)bgr + 3, blue[1], green[1], red[1]);
+                break;
+            case SimdRgb:
+                LoadBgr<false>((__m256i*)bgr + 0, red[0], green[0], blue[0]);
+                LoadBgr<false>((__m256i*)bgr + 3, red[1], green[1], blue[1]);
+                break;
+            default:
+                assert(0);
+            }
+
+            // 64 luma values (two registers of 32), permuted so that lane-wise
+            // interleaving with chroma produces the correct global byte order.
+            __m256i y0 = _mm256_permute4x64_epi64(BgrToY8<T>(blue[0], green[0], red[0]), 0xD8);
+            __m256i y1 = _mm256_permute4x64_epi64(BgrToY8<T>(blue[1], green[1], red[1]), 0xD8);
+
+            Average16(blue[0]);
+            Average16(blue[1]);
+            Average16(green[0]);
+            Average16(green[1]);
+            Average16(red[0]);
+            Average16(red[1]);
+
+            // 32 U and 32 V values (one per pixel pair), permuted for lane-wise interleaving.
+            __m256i u = _mm256_permutevar8x32_epi32(PackI16ToU8(BgrToU16<T>(blue[0], green[0], red[0]), BgrToU16<T>(blue[1], green[1], red[1])), K32_PERMUTE_UV);
+            __m256i v = _mm256_permutevar8x32_epi32(PackI16ToU8(BgrToV16<T>(blue[0], green[0], red[0]), BgrToV16<T>(blue[1], green[1], red[1])), K32_PERMUTE_UV);
+
+            // Interleave luma and chroma into the packed YUV422 output.
+            switch (yuvPattern)
+            {
+            case SimdYuyv422:
+            {
+                __m256i uv0 = UnpackU8<0>(u, v);
+                __m256i uv1 = UnpackU8<1>(u, v);
+                Store<align>((__m256i*)yuv + 0, UnpackU8<0>(y0, uv0));
+                Store<align>((__m256i*)yuv + 1, UnpackU8<1>(y0, uv0));
+                Store<align>((__m256i*)yuv + 2, UnpackU8<0>(y1, uv1));
+                Store<align>((__m256i*)yuv + 3, UnpackU8<1>(y1, uv1));
+                break;
+            }
+            case SimdYvyu422:
+            {
+                __m256i vu0 = UnpackU8<0>(v, u);
+                __m256i vu1 = UnpackU8<1>(v, u);
+                Store<align>((__m256i*)yuv + 0, UnpackU8<0>(y0, vu0));
+                Store<align>((__m256i*)yuv + 1, UnpackU8<1>(y0, vu0));
+                Store<align>((__m256i*)yuv + 2, UnpackU8<0>(y1, vu1));
+                Store<align>((__m256i*)yuv + 3, UnpackU8<1>(y1, vu1));
+                break;
+            }
+            case SimdUyvy422:
+            {
+                __m256i uv0 = UnpackU8<0>(u, v);
+                __m256i uv1 = UnpackU8<1>(u, v);
+                Store<align>((__m256i*)yuv + 0, UnpackU8<0>(uv0, y0));
+                Store<align>((__m256i*)yuv + 1, UnpackU8<1>(uv0, y0));
+                Store<align>((__m256i*)yuv + 2, UnpackU8<0>(uv1, y1));
+                Store<align>((__m256i*)yuv + 3, UnpackU8<1>(uv1, y1));
+                break;
+            }
+            case SimdVyuy422:
+            {
+                __m256i vu0 = UnpackU8<0>(v, u);
+                __m256i vu1 = UnpackU8<1>(v, u);
+                Store<align>((__m256i*)yuv + 0, UnpackU8<0>(vu0, y0));
+                Store<align>((__m256i*)yuv + 1, UnpackU8<1>(vu0, y0));
+                Store<align>((__m256i*)yuv + 2, UnpackU8<0>(vu1, y1));
+                Store<align>((__m256i*)yuv + 3, UnpackU8<1>(vu1, y1));
+                break;
+            }
+            default:
+                assert(0);
+            }
+        }
+
+        template <bool align, class T> void BgrToYuv422Packed(const uint8_t* bgr, size_t bgrStride, size_t width, size_t height, uint8_t* yuv, size_t yuvStride, 
+            SimdRgbOrderType rgbOrder, SimdYuv422PackPatternType yuvPattern)
+        {
+            assert((width % 2 == 0) && (width >= DA));
+            if (align)
+                assert(Aligned(yuv) && Aligned(yuvStride));
+
+            size_t widthDA = AlignLo(width, DA);
+            for (size_t row = 0; row < height; row += 1)
+            {
+                for (size_t col = 0; col < widthDA; col += DA)
+                    BgrToYuv422Packed<align, T>(bgr + col * 3, yuv + col * 2, rgbOrder, yuvPattern);
+                if (width != widthDA)
+                {
+                    size_t col = width - DA;
+                    BgrToYuv422Packed<false, T>(bgr + col * 3, yuv + col * 2, rgbOrder, yuvPattern);
+                }
+                yuv += yuvStride;
+                bgr += bgrStride;
+            }
+        }
+
+        template <class T> void BgrToYuv422Packed(const uint8_t* bgr, size_t bgrStride, size_t width, size_t height, uint8_t* yuv, size_t yuvStride,
+            SimdRgbOrderType rgbOrder, SimdYuv422PackPatternType yuvPattern)
+        {
+            if (Aligned(yuv) && Aligned(yuvStride))
+                BgrToYuv422Packed<true, T>(bgr, bgrStride, width, height, yuv, yuvStride, rgbOrder, yuvPattern);
+            else
+                BgrToYuv422Packed<false, T>(bgr, bgrStride, width, height, yuv, yuvStride, rgbOrder, yuvPattern);
+        }
+
+        void BgrToYuv422Packed(const uint8_t* bgr, size_t bgrStride, size_t width, size_t height, uint8_t* yuv, size_t yuvStride, 
+            SimdRgbOrderType rgbOrder, SimdYuvType yuvType, SimdYuv422PackPatternType yuvPattern)
+        {
+#if defined(SIMD_X86_ENABLE) && defined(NDEBUG) && defined(_MSC_VER) && _MSC_VER <= 1900
+            Base::BgrToYuv422Packed(bgr, bgrStride, width, height, yuv, yuvStride, rgbOrder, yuvType, yuvPattern);
+#else
+            switch (yuvType)
+            {
+            case SimdYuvBt601: BgrToYuv422Packed<Base::Bt601>(bgr, bgrStride, width, height, yuv, yuvStride, rgbOrder, yuvPattern); break;
+            case SimdYuvBt709: BgrToYuv422Packed<Base::Bt709>(bgr, bgrStride, width, height, yuv, yuvStride, rgbOrder, yuvPattern); break;
+            case SimdYuvBt2020: BgrToYuv422Packed<Base::Bt2020>(bgr, bgrStride, width, height, yuv, yuvStride, rgbOrder, yuvPattern); break;
+            case SimdYuvTrect871: BgrToYuv422Packed<Base::Trect871>(bgr, bgrStride, width, height, yuv, yuvStride, rgbOrder, yuvPattern); break;
             default:
                 assert(0);
             }
