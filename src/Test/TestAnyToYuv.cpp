@@ -424,6 +424,93 @@ namespace Test
 
     namespace
     {
+        struct FuncYuv422p
+        {
+            typedef void(*FuncPtr)(const uint8_t* src, size_t srcStride, size_t width, size_t height, uint8_t* yuv, size_t yuvStride,
+                SimdRgbOrderType rgbOrder, SimdYuvType yuvType, SimdYuv422PackPatternType yuvPattern);
+
+            FuncPtr func;
+            String description;
+
+            FuncYuv422p(const FuncPtr& f, const String& d) : func(f), description(d) {}
+
+            void Call(const View& src, View& yuv, SimdRgbOrderType rgbOrder, SimdYuvType yuvType, SimdYuv422PackPatternType yuvPattern) const
+            {
+                TEST_PERFORMANCE_TEST(description);
+                func(src.data, src.stride, src.width, src.height, yuv.data, yuv.stride, rgbOrder, yuvType, yuvPattern);
+            }
+        };
+    }
+
+#define FUNC_YUV422P(function) FuncYuv422p(function, #function)
+
+    bool AnyToYuv422PackedAutoTest(int width, int height, View::Format srcType, SimdRgbOrderType rgbOrder, SimdYuvType yuvType,
+        SimdYuv422PackPatternType yuvPattern, const FuncYuv422p& f1, const FuncYuv422p& f2)
+    {
+        bool result = true;
+
+        TEST_LOG_SS(Info, "Test " << f1.description << " & " << f2.description << " [" << width << ", " << height << "].");
+
+        View src(width, height, srcType, NULL, TEST_ALIGN(width));
+        FillRandom(src);
+
+        View yuv1(width, height, View::Uyvy16, NULL, TEST_ALIGN(width));
+        View yuv2(width, height, View::Uyvy16, NULL, TEST_ALIGN(width));
+
+        TEST_EXECUTE_AT_LEAST_MIN_TIME(f1.Call(src, yuv1, rgbOrder, yuvType, yuvPattern));
+        TEST_EXECUTE_AT_LEAST_MIN_TIME(f2.Call(src, yuv2, rgbOrder, yuvType, yuvPattern));
+
+        result = result && Compare(yuv1, yuv2, 0, true, 64, 0, "yuv");
+
+        return result;
+    }
+
+    bool AnyToYuv422PackedAutoTest(View::Format srcType, const FuncYuv422p& f1, const FuncYuv422p& f2)
+    {
+        bool result = true;
+
+        result = result && AnyToYuv422PackedAutoTest(W, H, srcType, SimdBgr, SimdYuvBt601, SimdYuyv422, f1, f2);
+        result = result && AnyToYuv422PackedAutoTest(W + O * 2, H - O, srcType, SimdRgb, SimdYuvBt709, SimdUyvy422, f1, f2);
+        result = result && AnyToYuv422PackedAutoTest(W - O * 2, H + O, srcType, SimdBgr, SimdYuvBt2020, SimdYvyu422, f1, f2);
+        result = result && AnyToYuv422PackedAutoTest(W, H, srcType, SimdRgb, SimdYuvTrect871, SimdVyuy422, f1, f2);
+
+        return result;
+    }
+
+    bool BgrToYuv422PackedAutoTest(const Options & options)
+    {
+        bool result = true;
+
+        if (TestBase(options))
+            result = result && AnyToYuv422PackedAutoTest(View::Bgr24, FUNC_YUV422P(Simd::Base::BgrToYuv422Packed), FUNC_YUV422P(SimdBgrToYuv422Packed));
+
+#ifdef SIMD_AVX2_ENABLE
+        if (Simd::Avx2::Enable && TestAvx2(options) && W >= Simd::Avx2::DA)
+            result = result && AnyToYuv422PackedAutoTest(View::Bgr24, FUNC_YUV422P(Simd::Base::BgrToYuv422Packed), FUNC_YUV422P(Simd::Avx2::BgrToYuv422Packed));
+#endif
+
+        return result;
+    }
+
+    bool BgraToYuv422PackedAutoTest(const Options & options)
+    {
+        bool result = true;
+
+        if (TestBase(options))
+            result = result && AnyToYuv422PackedAutoTest(View::Bgra32, FUNC_YUV422P(Simd::Base::BgraToYuv422Packed), FUNC_YUV422P(SimdBgraToYuv422Packed));
+
+#ifdef SIMD_AVX2_ENABLE
+        if (Simd::Avx2::Enable && TestAvx2(options) && W >= Simd::Avx2::DA)
+            result = result && AnyToYuv422PackedAutoTest(View::Bgra32, FUNC_YUV422P(Simd::Base::BgraToYuv422Packed), FUNC_YUV422P(Simd::Avx2::BgraToYuv422Packed));
+#endif
+
+        return result;
+    }
+
+    //-------------------------------------------------------------------------------------------------
+
+    namespace
+    {
         struct FuncYuva2
         {
             typedef void(*FuncPtr)(const uint8_t* bgra, size_t bgraStride, size_t width, size_t height, uint8_t* y, size_t yStride,
