@@ -477,6 +477,50 @@ namespace Test
         return result;
     }
 
+    bool BgrToNv12AutoTest(const Options & options)
+    {
+        const int widths[] = { 2, 62, 64, 66, 130 };
+        const int height = 6;
+        for (size_t index = 0; index < sizeof(widths) / sizeof(widths[0]); ++index)
+        {
+            const int width = widths[index];
+            View bgr(width, height, View::Bgr24), rgb(width, height, View::Bgr24);
+            View yRef(width, height, View::Gray8), y(width, height, View::Gray8);
+            View uRef(width / 2, height / 2, View::Gray8), vRef(width / 2, height / 2, View::Gray8);
+            View uvRef(width, height / 2, View::Gray8), uv(width, height / 2, View::Gray8);
+            FillRandom(bgr);
+            SimdBgrToRgb(bgr.data, width, height, bgr.stride, rgb.data, rgb.stride);
+
+            for (int type = SimdYuvBt601; type <= SimdYuvTrect871; ++type)
+            {
+                SimdYuvType yuvType = (SimdYuvType)type;
+                Simd::Base::BgrToYuv420pV2(bgr.data, bgr.stride, width, height, yRef.data, yRef.stride,
+                    uRef.data, uRef.stride, vRef.data, vRef.stride, yuvType);
+                for (int row = 0; row < height / 2; ++row)
+                {
+                    for (int col = 0; col < width / 2; ++col)
+                    {
+                        uvRef.Row<uint8_t>(row)[2 * col + 0] = uRef.Row<uint8_t>(row)[col];
+                        uvRef.Row<uint8_t>(row)[2 * col + 1] = vRef.Row<uint8_t>(row)[col];
+                    }
+                }
+
+                for (int order = SimdBgr; order <= SimdRgb; ++order)
+                {
+                    const View& src = order == SimdBgr ? bgr : rgb;
+                    SimdBgrToNv12(src.data, src.stride, width, height, y.data, y.stride, uv.data, uv.stride,
+                        (SimdRgbOrderType)order, yuvType);
+                    if (!Compare(yRef, y, 0, true, 64, 0, "NV12 Y") || !Compare(uvRef, uv, 0, true, 64, 0, "NV12 UV"))
+                    {
+                        TEST_LOG_SS(Error, "NV12 mismatch: width " << width << ", YUV type " << type << ", channel order " << order);
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
     bool BgrToYuv422PackedAutoTest(const Options & options)
     {
         bool result = true;

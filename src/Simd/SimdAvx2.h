@@ -160,6 +160,9 @@ namespace Simd
         void BgrToYuv444pV2(const uint8_t* bgr, size_t bgrStride, size_t width, size_t height,
             uint8_t* y, size_t yStride, uint8_t* u, size_t uStride, uint8_t* v, size_t vStride, SimdYuvType yuvType);
 
+        void BgrToNv12(const uint8_t* bgr, size_t bgrStride, size_t width, size_t height,
+            uint8_t* y, size_t yStride, uint8_t* uv, size_t uvStride, SimdRgbOrderType rgbOrder, SimdYuvType yuvType);
+
         void BgrToYuv422Packed(const uint8_t* bgr, size_t bgrStride, size_t width, size_t height, uint8_t* yuv, size_t yuvStride,
             SimdRgbOrderType rgbOrder, SimdYuvType yuvType, SimdYuv422PackPatternType yuvPattern);
 

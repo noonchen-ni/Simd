@@ -2607,6 +2607,15 @@ extern "C"
     */
     SIMD_API void SimdBgrToYuv422Packed(const uint8_t* bgr, size_t bgrStride, size_t width, size_t height, uint8_t* yuv, size_t yuvStride, SimdRgbOrderType rgbOrder, SimdYuvType yuvType, SimdYuv422PackPatternType yuvPattern);
 
+    /*! @ingroup yuv_conversion
+        Converts a 24-bit BGR or RGB image to NV12. Width and height must be even and at least 2.
+        The Y plane has height rows; the interleaved U,V plane has height/2 rows. Both planes have width bytes per row.
+        The source stride must be at least 3*width, and both destination strides must be at least width (all in bytes).
+        rgbOrder specifies the source channel order, and yuvType selects the conversion coefficients.
+    */
+    SIMD_API void SimdBgrToNv12(const uint8_t* bgr, size_t bgrStride, size_t width, size_t height,
+        uint8_t* y, size_t yStride, uint8_t* uv, size_t uvStride, SimdRgbOrderType rgbOrder, SimdYuvType yuvType);
+
     /*! @ingroup bgr_conversion
 
         \fn void SimdBgrToYuv444pV2(const uint8_t * bgr, size_t bgrStride, size_t width, size_t height, uint8_t * y, size_t yStride, uint8_t * u, size_t uStride, uint8_t * v, size_t vStride, SimdYuvType yuvType);
