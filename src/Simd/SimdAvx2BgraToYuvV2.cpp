@@ -193,7 +193,32 @@ namespace Simd
 
         //-------------------------------------------------------------------------------------------------
 
-        template <bool rgba, class T> SIMD_INLINE __m256i LoadAndRgbaToY8(const __m256i* bgra, __m256i b16_r16[2], __m256i g16_1[2]);
+        template <class T> SIMD_INLINE __m256i LoadAndRgbaToY16(const __m256i* bgra, __m256i& b16_r16, __m256i& g16_1)
+        {
+            __m256i _b16_r16[2], _g16_1[2];
+            LoadPreparedBgra16<false>(bgra + 0, _b16_r16[0], _g16_1[0]);
+            LoadPreparedBgra16<false>(bgra + 1, _b16_r16[1], _g16_1[1]);
+            // For RGBA input, actual output from LoadPreparedBgra16 is r16_b16,
+            // so we need to swap the R and B to get correct b16_r16 for calculation.
+            static const __m256i K8_SWAP_BR = SIMD_MM256_SETR_EPI8(
+                0x2, 0x3, 0x0, 0x1, 0x6, 0x7, 0x4, 0x5, 0xA, 0xB, 0x8, 0x9, 0xE, 0xF, 0xC, 0xD,
+                0x2, 0x3, 0x0, 0x1, 0x6, 0x7, 0x4, 0x5, 0xA, 0xB, 0x8, 0x9, 0xE, 0xF, 0xC, 0xD);
+            _b16_r16[0] = _mm256_shuffle_epi8(_b16_r16[0], K8_SWAP_BR);
+            _b16_r16[1] = _mm256_shuffle_epi8(_b16_r16[1], K8_SWAP_BR);
+            b16_r16 = _mm256_permute4x64_epi64(_mm256_hadd_epi32(_b16_r16[0], _b16_r16[1]), 0xD8);
+            g16_1 = _mm256_permute4x64_epi64(_mm256_hadd_epi32(_g16_1[0], _g16_1[1]), 0xD8);
+            return BgrToY16<T>(_b16_r16, _g16_1);
+        }
+
+        template <bool rgba, class T> SIMD_INLINE __m256i LoadAndRgbaToY8(const __m256i* bgra, __m256i b16_r16[2], __m256i g16_1[2])
+        {
+            if (!rgba)
+                return LoadAndBgrToY8<T>(bgra, b16_r16, g16_1);
+
+            return PackI16ToU8(LoadAndRgbaToY16<T>(bgra + 0, b16_r16[0], g16_1[0]), LoadAndRgbaToY16<T>(bgra + 2, b16_r16[1], g16_1[1]));
+        }
+
+        //-------------------------------------------------------------------------------------------------
 
         template <class T, bool nv12 = false, bool rgba = false> SIMD_INLINE void BgraToYuv420pV2(const uint8_t* bgra0, size_t bgraStride, uint8_t* y0, size_t yStride, uint8_t* u, uint8_t* v)
         {
@@ -414,31 +439,6 @@ namespace Simd
         }
 
         //-------------------------------------------------------------------------------------------------
-
-        template <class T> SIMD_INLINE __m256i LoadAndRgbaToY16(const __m256i* bgra, __m256i& b16_r16, __m256i& g16_1)
-        {
-            __m256i _b16_r16[2], _g16_1[2];
-            LoadPreparedBgra16<false>(bgra + 0, _b16_r16[0], _g16_1[0]);
-            LoadPreparedBgra16<false>(bgra + 1, _b16_r16[1], _g16_1[1]);
-            // For RGBA input, actual output from LoadPreparedBgra16 is r16_b16,
-            // so we need to swap the R and B to get correct b16_r16 for calculation.
-            static const __m256i K8_SWAP_BR = SIMD_MM256_SETR_EPI8(
-                0x2, 0x3, 0x0, 0x1, 0x6, 0x7, 0x4, 0x5, 0xA, 0xB, 0x8, 0x9, 0xE, 0xF, 0xC, 0xD,
-                0x2, 0x3, 0x0, 0x1, 0x6, 0x7, 0x4, 0x5, 0xA, 0xB, 0x8, 0x9, 0xE, 0xF, 0xC, 0xD);
-            _b16_r16[0] = _mm256_shuffle_epi8(_b16_r16[0], K8_SWAP_BR);
-            _b16_r16[1] = _mm256_shuffle_epi8(_b16_r16[1], K8_SWAP_BR);
-            b16_r16 = _mm256_permute4x64_epi64(_mm256_hadd_epi32(_b16_r16[0], _b16_r16[1]), 0xD8);
-            g16_1 = _mm256_permute4x64_epi64(_mm256_hadd_epi32(_g16_1[0], _g16_1[1]), 0xD8);
-            return BgrToY16<T>(_b16_r16, _g16_1);
-        }
-
-        template <bool rgba, class T> SIMD_INLINE __m256i LoadAndRgbaToY8(const __m256i* bgra, __m256i b16_r16[2], __m256i g16_1[2])
-        {
-            if (!rgba)
-                return LoadAndBgrToY8<T>(bgra, b16_r16, g16_1);
-
-            return PackI16ToU8(LoadAndRgbaToY16<T>(bgra + 0, b16_r16[0], g16_1[0]), LoadAndRgbaToY16<T>(bgra + 2, b16_r16[1], g16_1[1]));
-        }
 
         template <bool align, bool rgba, class T> SIMD_INLINE void BgraToYuv422Packed(const uint8_t* bgra, uint8_t* yuv, SimdYuv422PackPatternType yuvPattern)
         {
