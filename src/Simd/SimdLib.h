@@ -2293,6 +2293,14 @@ extern "C"
     */
     SIMD_API void SimdBgraToYuv422Packed(const uint8_t* bgra, size_t bgraStride, size_t width, size_t height, uint8_t* yuv, size_t yuvStride, SimdRgbOrderType rgbOrder, SimdYuvType yuvType, SimdYuv422PackPatternType yuvPattern);
 
+    /*! Converts BGRA (SimdBgr) or RGBA (SimdRgb) to NV12, ignoring alpha.
+        Width and height must be even and at least 2. The Y plane has height rows and the
+        interleaved U,V plane has height/2 rows; both store width bytes per row.
+        All strides are in bytes. The source stores 4*width bytes per row.
+    */
+    SIMD_API void SimdBgraToNv12(const uint8_t* bgra, size_t bgraStride, size_t width, size_t height,
+        uint8_t* y, size_t yStride, uint8_t* uv, size_t uvStride, SimdRgbOrderType rgbOrder, SimdYuvType yuvType);
+
     /*! @ingroup bgra_conversion
 
         \fn void SimdBgraToYuv444pV2(const uint8_t* bgra, size_t bgraStride, size_t width, size_t height, uint8_t* y, size_t yStride, uint8_t* u, size_t uStride, uint8_t* v, size_t vStride, SimdYuvType yuvType);

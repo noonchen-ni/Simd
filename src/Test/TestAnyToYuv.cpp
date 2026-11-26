@@ -477,24 +477,32 @@ namespace Test
         return result;
     }
 
-    bool BgrToNv12AutoTest(const Options & options)
+    static bool ColorToNv12AutoTest(View::Format format, decltype(&SimdBgrToNv12) convert, decltype(&SimdBgrToYuv420pV2) planar)
     {
         const int widths[] = { 2, 62, 64, 66, 130 };
         const int height = 6;
         for (size_t index = 0; index < sizeof(widths) / sizeof(widths[0]); ++index)
         {
             const int width = widths[index];
-            View bgr(width, height, View::Bgr24), rgb(width, height, View::Bgr24);
+            View bgr(width, height, format), rgb(width, height, format);
             View yRef(width, height, View::Gray8), y(width, height, View::Gray8);
             View uRef(width / 2, height / 2, View::Gray8), vRef(width / 2, height / 2, View::Gray8);
             View uvRef(width, height / 2, View::Gray8), uv(width, height / 2, View::Gray8);
             FillRandom(bgr);
-            SimdBgrToRgb(bgr.data, width, height, bgr.stride, rgb.data, rgb.stride);
+            if (format == View::Bgra32)
+            {
+                SimdBgraToRgba(bgr.data, width, height, bgr.stride, rgb.data, rgb.stride);
+                for (int row = 0; row < height; ++row)
+                    for (int col = 0; col < width; ++col)
+                        rgb.Row<uint8_t>(row)[4 * col + 3] ^= 0xFF;
+            }
+            else
+                SimdBgrToRgb(bgr.data, width, height, bgr.stride, rgb.data, rgb.stride);
 
             for (int type = SimdYuvBt601; type <= SimdYuvTrect871; ++type)
             {
                 SimdYuvType yuvType = (SimdYuvType)type;
-                Simd::Base::BgrToYuv420pV2(bgr.data, bgr.stride, width, height, yRef.data, yRef.stride,
+                planar(bgr.data, bgr.stride, width, height, yRef.data, yRef.stride,
                     uRef.data, uRef.stride, vRef.data, vRef.stride, yuvType);
                 for (int row = 0; row < height / 2; ++row)
                 {
@@ -508,7 +516,7 @@ namespace Test
                 for (int order = SimdBgr; order <= SimdRgb; ++order)
                 {
                     const View& src = order == SimdBgr ? bgr : rgb;
-                    SimdBgrToNv12(src.data, src.stride, width, height, y.data, y.stride, uv.data, uv.stride,
+                    convert(src.data, src.stride, width, height, y.data, y.stride, uv.data, uv.stride,
                         (SimdRgbOrderType)order, yuvType);
                     if (!Compare(yRef, y, 0, true, 64, 0, "NV12 Y") || !Compare(uvRef, uv, 0, true, 64, 0, "NV12 UV"))
                     {
@@ -519,6 +527,16 @@ namespace Test
             }
         }
         return true;
+    }
+
+    bool BgrToNv12AutoTest(const Options & options)
+    {
+        return ColorToNv12AutoTest(View::Bgr24, SimdBgrToNv12, Simd::Base::BgrToYuv420pV2);
+    }
+
+    bool BgraToNv12AutoTest(const Options & options)
+    {
+        return ColorToNv12AutoTest(View::Bgra32, SimdBgraToNv12, Simd::Base::BgraToYuv420pV2);
     }
 
     bool BgrToYuv422PackedAutoTest(const Options & options)

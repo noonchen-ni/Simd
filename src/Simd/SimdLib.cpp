@@ -1807,6 +1807,18 @@ SIMD_API void SimdBgrToNv12(const uint8_t* bgr, size_t bgrStride, size_t width, 
         Base::BgrToNv12(bgr, bgrStride, width, height, y, yStride, uv, uvStride, rgbOrder, yuvType);
 }
 
+SIMD_API void SimdBgraToNv12(const uint8_t* bgra, size_t bgraStride, size_t width, size_t height,
+    uint8_t* y, size_t yStride, uint8_t* uv, size_t uvStride, SimdRgbOrderType rgbOrder, SimdYuvType yuvType)
+{
+    SIMD_EMPTY();
+#ifdef SIMD_AVX2_ENABLE
+    if (Avx2::Enable && width >= Avx2::DA)
+        Avx2::BgraToNv12(bgra, bgraStride, width, height, y, yStride, uv, uvStride, rgbOrder, yuvType);
+    else
+#endif
+        Base::BgraToNv12(bgra, bgraStride, width, height, y, yStride, uv, uvStride, rgbOrder, yuvType);
+}
+
 SIMD_API void SimdBgrToYuv422Packed(const uint8_t* bgr, size_t bgrStride, size_t width, size_t height, uint8_t* yuv, size_t yuvStride,
     SimdRgbOrderType rgbOrder, SimdYuvType yuvType, SimdYuv422PackPatternType yuvPattern)
 {
